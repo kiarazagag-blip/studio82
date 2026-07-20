@@ -1,0 +1,13 @@
+{
+  "name": "designsimply-webflow-cms",
+  "version": "1.0.0",
+  "description": "Build script for Webflow CMS CSV data",
+  "main": "build-cms.js",
+  "scripts": {
+    "build": "node build-cms.js"
+  },
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "csv-parse": "^5.5.0"
+  }
+}
