@@ -130,18 +130,29 @@ function build() {
 
     // 1. Prepare all index pages
     const indexes = [];
+    const loadedFiles = {}; // Cache to prevent overwriting when multiple lists are on the same page
+
     if (collection.indexPages) {
       collection.indexPages.forEach(idx => {
         if (!fs.existsSync(idx.file)) return;
-        const html = fs.readFileSync(idx.file, 'utf8');
-        const $index = cheerio.load(html);
+        
+        if (!loadedFiles[idx.file]) {
+          const html = fs.readFileSync(idx.file, 'utf8');
+          loadedFiles[idx.file] = cheerio.load(html);
+        }
+        
+        const $index = loadedFiles[idx.file];
         const $list = $index(idx.listSelector);
         if ($list.length === 0) {
           console.log(`    ! List not found: ${idx.listSelector} in ${idx.file}`);
           return;
         }
         
-        const $itemsWrapper = $list.find('.w-dyn-items');
+        let $itemsWrapper = $list.find('.w-dyn-items');
+        if ($list.hasClass('w-dyn-items')) {
+           $itemsWrapper = $list;
+        }
+        
         if ($itemsWrapper.length === 0) {
           console.log(`    ! Wrapper not found for: ${idx.listSelector}`);
           return;
@@ -191,10 +202,14 @@ function build() {
       });
     });
 
-    // 3. Save index pages to disk
+    // 3. Save index pages to disk (Only save each file once)
+    const savedFiles = new Set();
     indexes.forEach(i => {
-       fs.writeFileSync(i.file, i.$index.html());
-       console.log(`  -> Updated Index: ${i.file}`);
+       if (!savedFiles.has(i.file)) {
+         fs.writeFileSync(i.file, i.$index.html());
+         console.log(`  -> Updated Index: ${i.file}`);
+         savedFiles.add(i.file);
+       }
     });
 
     // 4. NOW read the template for detail pages (it may have been updated in step 3!)
