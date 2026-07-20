@@ -136,11 +136,18 @@ function build() {
         const html = fs.readFileSync(idx.file, 'utf8');
         const $index = cheerio.load(html);
         const $list = $index(idx.listSelector);
-        if ($list.length === 0) return;
+        if ($list.length === 0) {
+          console.log(`    ! List not found: ${idx.listSelector} in ${idx.file}`);
+          return;
+        }
         
         const $itemsWrapper = $list.find('.w-dyn-items');
-        if ($itemsWrapper.length === 0) return;
+        if ($itemsWrapper.length === 0) {
+          console.log(`    ! Wrapper not found for: ${idx.listSelector}`);
+          return;
+        }
         
+        console.log(`    Found list: ${idx.listSelector}`);
         const $templateItem = $itemsWrapper.find(idx.itemSelector).first().clone();
         
         // Empty only the items wrapper, not the entire list (preserves slider structure)
