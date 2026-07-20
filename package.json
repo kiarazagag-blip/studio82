@@ -4,7 +4,7 @@
   "description": "Build script for Webflow CMS CSV data",
   "main": "build-cms.js",
   "scripts": {
-    "build": "node build-cms.js"
+    "generate-cms": "node build-cms.js"
   },
   "dependencies": {
     "cheerio": "^1.0.0",
