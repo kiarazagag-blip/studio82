@@ -29,7 +29,7 @@ jobs:
         run: npm install
 
       - name: Build CMS Pages
-        run: node build-cms.js
+        run: npm run generate-cms
 
       - name: Commit Generated Pages
         uses: stefanzweifel/git-auto-commit-action@v5
