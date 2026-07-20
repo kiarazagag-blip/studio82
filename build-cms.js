@@ -116,7 +116,28 @@ function build() {
           }
         }
       }
+      // Clean up Webflow empty bindings
       $('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
+
+      // Fix relative paths (CSS, JS, Images, Links) since this file is inside a subfolder
+      $('[href]').each((i, el) => {
+        const href = $(el).attr('href');
+        if (href && !href.startsWith('http') && !href.startsWith('//') && !href.startsWith('#') && !href.startsWith('/') && !href.startsWith('mailto:')) {
+          // Check if it already has ../ (e.g. if the template was already in a subfolder like others/)
+          if (!href.startsWith('../')) {
+            $(el).attr('href', '../' + href);
+          }
+        }
+      });
+      $('[src]').each((i, el) => {
+        const src = $(el).attr('src');
+        if (src && !src.startsWith('http') && !src.startsWith('//') && !src.startsWith('/') && !src.startsWith('data:')) {
+          if (!src.startsWith('../')) {
+            $(el).attr('src', '../' + src);
+          }
+        }
+      });
+
       fs.writeFileSync(outputPath, $.html());
       console.log(`  -> Generated: ${outputPath}`);
 
