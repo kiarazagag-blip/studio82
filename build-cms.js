@@ -17,6 +17,16 @@ const collections = [
       'Writer name': { selector: '.writter-info div:first-child', attr: 'text' },
       'Published On': { selector: '.writter-info .date', attr: 'text' },
       'Writer image': { selector: '.writter-image img', attr: 'src' }
+    },
+    indexPage: {
+      file: 'others/blog.html',
+      listSelector: '.blog-page-collection-list',
+      itemSelector: '.blog-page-collection-item',
+      linkSelector: 'a.blog-small-card',
+      mappings: {
+        'Name': { selector: '.blog-page-card-main-title', attr: 'text' },
+        'Main Image': { selector: '.blog-image-main-picture img', attr: 'src' }
+      }
     }
   },
   {
@@ -34,6 +44,17 @@ const collections = [
       'Sort Order 1 Image': { selector: '.works-template-page-hero img, .work-template-first-image', attr: 'src' },
       'Sort Order 2 Image': { selector: '.work-template-second-image', attr: 'src' },
       'Sort Order 3 Image': { selector: '.work-template-third-image-container', attr: 'src' },
+    },
+    indexPage: {
+      file: 'work/work.html',
+      listSelector: '.work-small-card-list',
+      itemSelector: '.work-small-card-item',
+      linkSelector: 'a.work-small-card',
+      mappings: {
+        'Name': { selector: '.work-text-size', attr: 'text' },
+        'Sort Order 1 Image': { selector: '.big-card-image img', attr: 'src' },
+        'Video': { selector: '.big-card-image video source', attr: 'src' }
+      }
     }
   }
 ];
@@ -59,14 +80,30 @@ function build() {
     const records = parse(csvData, { columns: true, skip_empty_lines: true });
 
     const templateHtml = fs.readFileSync(collection.template, 'utf8');
+    
+    let indexHtml = null;
+    let $index = null;
+    let $templateItem = null;
+    
+    if (collection.indexPage && fs.existsSync(collection.indexPage.file)) {
+      indexHtml = fs.readFileSync(collection.indexPage.file, 'utf8');
+      $index = cheerio.load(indexHtml);
+      const $list = $index(collection.indexPage.listSelector);
+      $templateItem = $list.find(collection.indexPage.itemSelector).first().clone();
+      
+      // Clear the original list items and empty states
+      $list.empty();
+      $index('.w-dyn-empty').remove();
+    }
 
     records.forEach(row => {
       // Skip drafted or archived items if present in CSV
       if (row['Draft'] === 'true' || row['Archived'] === 'true') return;
+      const slug = row['Slug'] || row['Name'].toLowerCase().replace(/\s+/g, '-');
+      const outputPath = path.join(collection.outDir, `${slug}.html`);
 
+      // --- GENERATE DETAIL PAGE ---
       const $ = cheerio.load(templateHtml);
-
-      // Apply mappings
       for (const [column, rule] of Object.entries(collection.mappings)) {
         if (row[column] && row[column].trim() !== '') {
           if (rule.attr === 'text') {
@@ -75,20 +112,45 @@ function build() {
             $(rule.selector).html(row[column]);
           } else if (rule.attr === 'src') {
             $(rule.selector).attr('src', row[column]);
-            $(rule.selector).removeAttr('srcset'); // Remove webflow srcset to force new image
+            $(rule.selector).removeAttr('srcset');
           }
         }
       }
-
-      // Clean up Webflow empty bindings
       $('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
-
-      const slug = row['Slug'] || row['Name'].toLowerCase().replace(/\s+/g, '-');
-      const outputPath = path.join(collection.outDir, `${slug}.html`);
-
       fs.writeFileSync(outputPath, $.html());
       console.log(`  -> Generated: ${outputPath}`);
+
+      // --- INJECT INTO INDEX PAGE ---
+      if ($index && $templateItem) {
+        const $item = $templateItem.clone();
+        
+        // Link to detail page
+        // Determine correct relative path from the index page to the detail page
+        // blog.html is in 'others/' -> detail page is '../blog/slug.html'
+        // work.html is in 'work/' -> detail page is '../work/slug.html'
+        const linkHref = `../${collection.outDir}/${slug}.html`;
+        $item.find(collection.indexPage.linkSelector).attr('href', linkHref);
+        
+        for (const [column, rule] of Object.entries(collection.indexPage.mappings)) {
+           if (row[column] && row[column].trim() !== '') {
+             if (rule.attr === 'text') {
+               $item.find(rule.selector).text(row[column]);
+             } else if (rule.attr === 'src') {
+               $item.find(rule.selector).attr('src', row[column]);
+               $item.find(rule.selector).removeAttr('srcset');
+             }
+           }
+        }
+        $item.find('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
+        $index(collection.indexPage.listSelector).append($item);
+      }
     });
+    
+    // Save the modified index page back to disk
+    if ($index) {
+       fs.writeFileSync(collection.indexPage.file, $index.html());
+       console.log(`  -> Updated Index: ${collection.indexPage.file}`);
+    }
   });
 }
 
