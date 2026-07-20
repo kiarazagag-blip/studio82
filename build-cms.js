@@ -18,16 +18,38 @@ const collections = [
       'Published On': { selector: '.writter-info .date', attr: 'text' },
       'Writer image': { selector: '.writter-image img', attr: 'src' }
     },
-    indexPage: {
-      file: 'others/blog.html',
-      listSelector: '.blog-page-collection-list',
-      itemSelector: '.blog-page-collection-item',
-      linkSelector: 'a.blog-small-card',
-      mappings: {
-        'Name': { selector: '.blog-page-card-main-title', attr: 'text' },
-        'Main Image': { selector: '.blog-image-main-picture img', attr: 'src' }
+    indexPages: [
+      {
+        file: 'others/blog.html',
+        listSelector: '.blog-page-collection-list',
+        itemSelector: '.blog-page-collection-item',
+        linkSelector: 'a.blog-small-card',
+        mappings: {
+          'Name': { selector: '.blog-page-card-main-title', attr: 'text' },
+          'Main Image': { selector: '.blog-image-main-picture img', attr: 'src' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.blogging-sections .splide__track.w-dyn-list',
+        itemSelector: '.splide__slide.w-dyn-item',
+        linkSelector: 'a.works-slider-link-block',
+        mappings: {
+          'Name': { selector: '.works-slider-title.blogies-slider', attr: 'text' },
+          'Main Image': { selector: 'img.image-7._9090', attr: 'src' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.container-9:eq(1) .swiper.w-dyn-list',
+        itemSelector: '.swiper-slide.w-dyn-item',
+        linkSelector: 'a.blog-swiper-link-blovk-cover',
+        mappings: {
+          'Name': { selector: '.swiper-heading-two', attr: 'text' },
+          'Main Image': { selector: 'img.slider-pill_photo', attr: 'src' }
+        }
       }
-    }
+    ]
   },
   {
     name: 'Works',
@@ -45,17 +67,49 @@ const collections = [
       'Sort Order 2 Image': { selector: '.work-template-second-image', attr: 'src' },
       'Sort Order 3 Image': { selector: '.work-template-third-image-container', attr: 'src' },
     },
-    indexPage: {
-      file: 'work/work.html',
-      listSelector: '.work-small-card-list',
-      itemSelector: '.work-small-card-item',
-      linkSelector: 'a.work-small-card',
-      mappings: {
-        'Name': { selector: '.work-text-size', attr: 'text' },
-        'Sort Order 1 Image': { selector: '.big-card-image img', attr: 'src' },
-        'Video': { selector: '.big-card-image video source', attr: 'src' }
+    indexPages: [
+      {
+        file: 'work/work.html',
+        listSelector: '.work-small-card-list',
+        itemSelector: '.work-small-card-item',
+        linkSelector: 'a.work-small-card',
+        mappings: {
+          'Name': { selector: '.work-text-size', attr: 'text' },
+          'Sort Order 1 Image': { selector: '.big-card-image img', attr: 'src' },
+          'Video': { selector: '.big-card-image video source', attr: 'src' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: 'section.section-2.is--slider .splide__track.w-dyn-list',
+        itemSelector: '.splide__slide.w-dyn-item',
+        linkSelector: 'a.works-slider-link-block.workss',
+        mappings: {
+          'Name': { selector: '.works-slider-title.workies-slider', attr: 'text' },
+          'Sort Order 1 Image': { selector: 'img.image-8', attr: 'src' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.container-9:eq(0) .swiper.w-dyn-list',
+        itemSelector: '.swiper-slide.w-dyn-item',
+        linkSelector: 'a.link-block-2',
+        mappings: {
+          'Name': { selector: 'h1.heading-23', attr: 'text' },
+          'Sort Order 1 Image': { selector: 'img.slider-pill_photo', attr: 'src' }
+        }
+      },
+      {
+        file: 'detail_works.html',
+        listSelector: '.collection-list-wrapper-4.w-dyn-list',
+        itemSelector: '.more-works-collection-item.w-dyn-item',
+        linkSelector: 'a.more-works-link-block',
+        mappings: {
+          'Name': { selector: '.more-works-title-text', attr: 'text' },
+          'Sort Order 1 Image': { selector: 'img.more-works-card-image', attr: 'src' }
+        }
       }
-    }
+    ]
   }
 ];
 
@@ -63,11 +117,6 @@ function build() {
   collections.forEach(collection => {
     if (!fs.existsSync(collection.csv)) {
       console.log(`Skipping ${collection.name}: CSV not found at ${collection.csv}`);
-      return;
-    }
-
-    if (!fs.existsSync(collection.template)) {
-      console.log(`Skipping ${collection.name}: Template not found at ${collection.template}`);
       return;
     }
 
@@ -79,30 +128,76 @@ function build() {
     const csvData = fs.readFileSync(collection.csv, 'utf8');
     const records = parse(csvData, { columns: true, skip_empty_lines: true });
 
-    const templateHtml = fs.readFileSync(collection.template, 'utf8');
-    
-    let indexHtml = null;
-    let $index = null;
-    let $templateItem = null;
-    
-    if (collection.indexPage && fs.existsSync(collection.indexPage.file)) {
-      indexHtml = fs.readFileSync(collection.indexPage.file, 'utf8');
-      $index = cheerio.load(indexHtml);
-      const $list = $index(collection.indexPage.listSelector);
-      $templateItem = $list.find(collection.indexPage.itemSelector).first().clone();
-      
-      // Clear the original list items and empty states
-      $list.empty();
-      $index('.w-dyn-empty').remove();
+    // 1. Prepare all index pages
+    const indexes = [];
+    if (collection.indexPages) {
+      collection.indexPages.forEach(idx => {
+        if (!fs.existsSync(idx.file)) return;
+        const html = fs.readFileSync(idx.file, 'utf8');
+        const $index = cheerio.load(html);
+        const $list = $index(idx.listSelector);
+        if ($list.length === 0) return;
+        
+        const $templateItem = $list.find(idx.itemSelector).first().clone();
+        $list.empty();
+        $list.parent().find('.w-dyn-empty').remove();
+        
+        indexes.push({ idx, $index, $templateItem, file: idx.file });
+      });
     }
 
+    // 2. Populate index pages in memory
     records.forEach(row => {
-      // Skip drafted or archived items if present in CSV
       if (row['Draft'] === 'true' || row['Archived'] === 'true') return;
-      const slug = row['Slug'] || row['Name'].toLowerCase().replace(/\s+/g, '-');
+      const slug = row['Slug'] || row['Name'].toLowerCase().replace(/\\s+/g, '-');
+      
+      indexes.forEach(i => {
+        const { idx, $index, $templateItem } = i;
+        if (!$templateItem) return;
+        
+        const $item = $templateItem.clone();
+        
+        // Determine correct relative path from the index page to the detail page
+        let prefix = '';
+        if (i.file.includes('/')) prefix = '../'; // e.g. others/blog.html
+        
+        const linkHref = `${prefix}${collection.outDir}/${slug}.html`;
+        $item.find(idx.linkSelector).attr('href', linkHref);
+        
+        for (const [column, rule] of Object.entries(idx.mappings)) {
+           if (row[column] && row[column].trim() !== '') {
+             if (rule.attr === 'text') {
+               $item.find(rule.selector).text(row[column]);
+             } else if (rule.attr === 'src') {
+               $item.find(rule.selector).attr('src', row[column]);
+               $item.find(rule.selector).removeAttr('srcset');
+             }
+           }
+        }
+        $item.find('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
+        $index(idx.listSelector).append($item);
+      });
+    });
+
+    // 3. Save index pages to disk
+    indexes.forEach(i => {
+       fs.writeFileSync(i.file, i.$index.html());
+       console.log(`  -> Updated Index: ${i.file}`);
+    });
+
+    // 4. NOW read the template for detail pages (it may have been updated in step 3!)
+    if (!fs.existsSync(collection.template)) {
+      console.log(`Skipping ${collection.name}: Template not found at ${collection.template}`);
+      return;
+    }
+    const templateHtml = fs.readFileSync(collection.template, 'utf8');
+
+    // 5. Generate detail pages
+    records.forEach(row => {
+      if (row['Draft'] === 'true' || row['Archived'] === 'true') return;
+      const slug = row['Slug'] || row['Name'].toLowerCase().replace(/\\s+/g, '-');
       const outputPath = path.join(collection.outDir, `${slug}.html`);
 
-      // --- GENERATE DETAIL PAGE ---
       const $ = cheerio.load(templateHtml);
       for (const [column, rule] of Object.entries(collection.mappings)) {
         if (row[column] && row[column].trim() !== '') {
@@ -116,62 +211,25 @@ function build() {
           }
         }
       }
-      // Clean up Webflow empty bindings
       $('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
 
-      // Fix relative paths (CSS, JS, Images, Links) since this file is inside a subfolder
+      // Fix relative paths for files in subdirectories
       $('[href]').each((i, el) => {
         const href = $(el).attr('href');
         if (href && !href.startsWith('http') && !href.startsWith('//') && !href.startsWith('#') && !href.startsWith('/') && !href.startsWith('mailto:')) {
-          // Check if it already has ../ (e.g. if the template was already in a subfolder like others/)
-          if (!href.startsWith('../')) {
-            $(el).attr('href', '../' + href);
-          }
+          if (!href.startsWith('../')) $(el).attr('href', '../' + href);
         }
       });
       $('[src]').each((i, el) => {
         const src = $(el).attr('src');
         if (src && !src.startsWith('http') && !src.startsWith('//') && !src.startsWith('/') && !src.startsWith('data:')) {
-          if (!src.startsWith('../')) {
-            $(el).attr('src', '../' + src);
-          }
+          if (!src.startsWith('../')) $(el).attr('src', '../' + src);
         }
       });
 
       fs.writeFileSync(outputPath, $.html());
       console.log(`  -> Generated: ${outputPath}`);
-
-      // --- INJECT INTO INDEX PAGE ---
-      if ($index && $templateItem) {
-        const $item = $templateItem.clone();
-        
-        // Link to detail page
-        // Determine correct relative path from the index page to the detail page
-        // blog.html is in 'others/' -> detail page is '../blog/slug.html'
-        // work.html is in 'work/' -> detail page is '../work/slug.html'
-        const linkHref = `../${collection.outDir}/${slug}.html`;
-        $item.find(collection.indexPage.linkSelector).attr('href', linkHref);
-        
-        for (const [column, rule] of Object.entries(collection.indexPage.mappings)) {
-           if (row[column] && row[column].trim() !== '') {
-             if (rule.attr === 'text') {
-               $item.find(rule.selector).text(row[column]);
-             } else if (rule.attr === 'src') {
-               $item.find(rule.selector).attr('src', row[column]);
-               $item.find(rule.selector).removeAttr('srcset');
-             }
-           }
-        }
-        $item.find('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
-        $index(collection.indexPage.listSelector).append($item);
-      }
     });
-    
-    // Save the modified index page back to disk
-    if ($index) {
-       fs.writeFileSync(collection.indexPage.file, $index.html());
-       console.log(`  -> Updated Index: ${collection.indexPage.file}`);
-    }
   });
 }
 
