@@ -138,11 +138,16 @@ function build() {
         const $list = $index(idx.listSelector);
         if ($list.length === 0) return;
         
-        const $templateItem = $list.find(idx.itemSelector).first().clone();
-        $list.empty();
-        $list.parent().find('.w-dyn-empty').remove();
+        const $itemsWrapper = $list.find('.w-dyn-items');
+        if ($itemsWrapper.length === 0) return;
         
-        indexes.push({ idx, $index, $templateItem, file: idx.file });
+        const $templateItem = $itemsWrapper.find(idx.itemSelector).first().clone();
+        
+        // Empty only the items wrapper, not the entire list (preserves slider structure)
+        $itemsWrapper.empty();
+        $list.find('.w-dyn-empty').remove();
+        
+        indexes.push({ idx, $index, $templateItem, $itemsWrapper, file: idx.file });
       });
     }
 
@@ -175,7 +180,7 @@ function build() {
            }
         }
         $item.find('.w-dyn-bind-empty').removeClass('w-dyn-bind-empty');
-        $index(idx.listSelector).append($item);
+        i.$itemsWrapper.append($item);
       });
     });
 
