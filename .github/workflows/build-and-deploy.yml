@@ -1,0 +1,38 @@
+name: Build CMS Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'cms-data/**'
+      - 'build-cms.js'
+      - '*.html'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build CMS Pages
+        run: node build-cms.js
+
+      - name: Commit Generated Pages
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: Auto-generate static CMS pages from CSVs"
+          file_pattern: 'blog/*.html work/*.html team/*.html'
