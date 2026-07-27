@@ -3,6 +3,61 @@ const path = require('path');
 const { parse } = require('csv-parse/sync');
 const cheerio = require('cheerio');
 
+// Dynamically build Mega-Menu index pages for Works and Blogs
+const allHtmlFiles = fs.readdirSync('.').filter(f => f.endsWith('.html') && f !== 'index.html');
+const worksMegaMenu = [];
+const blogsMegaMenu = [];
+
+allHtmlFiles.forEach(file => {
+  worksMegaMenu.push({
+    file: file,
+    listSelector: '.dropdown-bottom-nav .collection-list-wrapper-nav.w-dyn-list:eq(0)',
+    itemSelector: '.w-dyn-item',
+    linkSelector: 'a.dropdown-link',
+    filter: row => row['project type'] && row['project type'].toLowerCase().includes('web'),
+    mappings: {
+      'Name': { selector: '.text-size-small.caps', attr: 'text' },
+      'project type': { selector: '.opacity-70 .text-size-small', attr: 'text' },
+      'Sort Order 1 Image': { selector: '.dropdown-image img', attr: 'src' }
+    }
+  });
+  worksMegaMenu.push({
+    file: file,
+    listSelector: '.dropdown-bottom-nav .collection-list-wrapper-nav.w-dyn-list:eq(1)',
+    itemSelector: '.w-dyn-item',
+    linkSelector: 'a.dropdown-link',
+    filter: row => row['project type'] && row['project type'].toLowerCase().includes('mobile'),
+    mappings: {
+      'Name': { selector: '.text-size-small.caps', attr: 'text' },
+      'project type': { selector: '.opacity-70 .text-size-small', attr: 'text' },
+      'Sort Order 1 Image': { selector: '.dropdown-image img', attr: 'src' }
+    }
+  });
+  worksMegaMenu.push({
+    file: file,
+    listSelector: '.dropdown-bottom-nav .collection-list-wrapper-nav.w-dyn-list:eq(2)',
+    itemSelector: '.w-dyn-item',
+    linkSelector: 'a.dropdown-link',
+    filter: row => row['project type'] && row['project type'].toLowerCase().includes('3d'),
+    mappings: {
+      'Name': { selector: '.text-size-small.caps', attr: 'text' },
+      'project type': { selector: '.opacity-70 .text-size-small', attr: 'text' },
+      'Sort Order 1 Image': { selector: '.dropdown-image img', attr: 'src' }
+    }
+  });
+  blogsMegaMenu.push({
+    file: file,
+    listSelector: '.dropdown-bottom-nav .collection-list-wrapper-nav.w-dyn-list:eq(3)',
+    itemSelector: '.w-dyn-item',
+    linkSelector: 'a.dropdown-link',
+    mappings: {
+      'Name': { selector: '.text-size-small.caps', attr: 'text' },
+      'Small title': { selector: '.opacity-70 .text-size-small', attr: 'text' },
+      'Main Image': { selector: '.dropdown-image img', attr: 'src' }
+    }
+  });
+});
+
 const collections = [
   {
     name: 'Blogs',
@@ -48,7 +103,18 @@ const collections = [
           'Name': { selector: '.swiper-heading-two', attr: 'text' },
           'Main Image': { selector: 'img.slider-pill_photo', attr: 'src' }
         }
-      }
+      },
+      {
+        file: 'detail_blog.html',
+        listSelector: '.first-blog-card-cms.show-mobile.w-dyn-list',
+        itemSelector: '.blog-card.w-dyn-item',
+        linkSelector: 'a',
+        mappings: {
+          'Name': { selector: 'a.text-size-blog-cards', attr: 'text' },
+          'Main Image': { selector: 'img.image', attr: 'src' }
+        }
+      },
+      ...blogsMegaMenu
     ]
   },
   {
@@ -107,6 +173,53 @@ const collections = [
         mappings: {
           'Name': { selector: '.more-works-title-text', attr: 'text' },
           'Sort Order 1 Image': { selector: 'img.more-works-card-image', attr: 'src' }
+        }
+      },
+      ...worksMegaMenu
+    ]
+  },
+  {
+    name: 'Teams',
+    csv: 'cms-data/DESIGNSIMPLY - Teams - 675d6f062f799cf7e40c3952.csv',
+    template: null,
+    outDir: null,
+    mappings: {},
+    indexPages: [
+      {
+        file: 'index.html',
+        listSelector: '.speaker-list.w-dyn-items',
+        itemSelector: '.collection-item-2.w-dyn-item',
+        linkSelector: 'a.speaker-item-preview',
+        mappings: {
+          'Name': { selector: 'h1.heading-large', attr: 'text' },
+          'Profile Picture': { selector: 'img.portrait-background', attr: 'src' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.marquee_list.w-dyn-list:eq(0)',
+        itemSelector: '.marquee_item.w-dyn-item',
+        linkSelector: null,
+        mappings: {
+          'Name': { selector: '.marquee_heading', attr: 'text' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.marquee_list.w-dyn-list:eq(1)',
+        itemSelector: '.marquee_item.w-dyn-item',
+        linkSelector: null,
+        mappings: {
+          'Name': { selector: '.marquee_heading', attr: 'text' }
+        }
+      },
+      {
+        file: 'index.html',
+        listSelector: '.marquee_text-wrap.w-dyn-list',
+        itemSelector: '.marquee_text-item.w-dyn-item',
+        linkSelector: null,
+        mappings: {
+          'Name': { selector: '.marquee_text-p', attr: 'text' }
         }
       }
     ]
@@ -178,14 +291,19 @@ function build() {
         const { idx, $index, $templateItem } = i;
         if (!$templateItem) return;
         
+        // Check filtering logic
+        if (idx.filter && !idx.filter(row)) return;
+        
         const $item = $templateItem.clone();
         
         // Determine correct relative path from the index page to the detail page
         let prefix = '';
         if (i.file.includes('/')) prefix = '../'; // e.g. others/blog.html
         
-        const linkHref = `${prefix}${collection.outDir}/${slug}.html`;
-        $item.find(idx.linkSelector).attr('href', linkHref);
+        if (collection.outDir && idx.linkSelector) {
+          const linkHref = `${prefix}${collection.outDir}/${slug}.html`;
+          $item.find(idx.linkSelector).attr('href', linkHref);
+        }
         
         for (const [column, rule] of Object.entries(idx.mappings)) {
            if (row[column] && row[column].trim() !== '') {
@@ -213,8 +331,8 @@ function build() {
     });
 
     // 4. NOW read the template for detail pages (it may have been updated in step 3!)
-    if (!fs.existsSync(collection.template)) {
-      console.log(`Skipping ${collection.name}: Template not found at ${collection.template}`);
+    if (!collection.template || !fs.existsSync(collection.template)) {
+      console.log(`Skipping detail pages for ${collection.name}: Template not found`);
       return;
     }
     const templateHtml = fs.readFileSync(collection.template, 'utf8');
