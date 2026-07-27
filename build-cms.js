@@ -223,6 +223,37 @@ const collections = [
         }
       }
     ]
+  },
+  {
+    name: 'Works categories',
+    csv: 'cms-data/DESIGNSIMPLY - Works categories - 675d6f062f799cf7e40c3897.csv',
+    template: null,
+    outDir: null,
+    mappings: {},
+    indexPages: [
+      {
+        file: 'index.html',
+        listSelector: '._3d-collection-list-wrapper.w-dyn-list',
+        itemSelector: '.w-dyn-item',
+        linkSelector: null,
+        mappings: {
+          'Name': { selector: 'h1._3d-cube-heading-large.before-flip-white', attr: 'text' },
+          'or': { selector: 'h1._3d-cube-heading-large.or-text', attr: 'text' },
+          'work catagories image': { selector: 'img._3d-back-cube-cover-image', attr: 'src' }
+        }
+      },
+      {
+        file: 'others/pricing.html',
+        listSelector: '._3d-collection-list-wrapper.w-dyn-list',
+        itemSelector: '.w-dyn-item',
+        linkSelector: null,
+        mappings: {
+          'Name': { selector: 'h1._3d-cube-heading-large.before-flip-white', attr: 'text' },
+          'or': { selector: 'h1._3d-cube-heading-large.or-text', attr: 'text' },
+          'work catagories image': { selector: 'img._3d-back-cube-cover-image', attr: 'src' }
+        }
+      }
+    ]
   }
 ];
 
