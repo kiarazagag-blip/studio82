@@ -233,7 +233,7 @@ function build() {
       return;
     }
 
-    if (!fs.existsSync(collection.outDir)) {
+    if (collection.outDir && !fs.existsSync(collection.outDir)) {
       fs.mkdirSync(collection.outDir, { recursive: true });
     }
 
